@@ -13,13 +13,17 @@ import time
 GET_COMMITS = "https://api.github.com/repos/{owner}/{repo}/commits"       # get list of commits
 GET_COMMIT  = "https://api.github.com/repos/{owner}/{repo}/commits/{sha}" # get specific commit, including the list of file changes
 
-# Create requests session
+# requests settings
 USER_AGENT = "WatchOctocatBot/0.0" # instead of requests's User-Agent
 HEADERS = {"User-Agent": USER_AGENT, "Time-Zone": "Etc/UTC"}
-SESSION = requests.Session()
-SESSION.headers = HEADERS
+AUTH = None
 if config.USERNAME and config.PERSONAL_ACCESS_TOKEN:
-   SESSION.auth = (config.USERNAME, config.PERSONAL_ACCESS_TOKEN)
+   AUTH = (config.USERNAME, config.PERSONAL_ACCESS_TOKEN)
+
+REQUESTS_SETTINGS = {
+   "headers": HEADERS,
+   "auth": AUTH
+}
 
 # Initialize hash table that will remember the time since we last checked each repository
 # Note, O(1) space complexity per each repository watched
@@ -34,10 +38,10 @@ def now(offset=0):
    return t.isoformat() + "Z"
 
 def get_request(endpoint, params=None):
-   r = SESSION.get(endpoint, params=params) # can be simplified in Python 3.8 using the walrus operator
+   r = requests.get(endpoint, params=params, **REQUESTS_SETTINGS) # can be simplified in Python 3.8 using the walrus operator
    while r.status_code != 200:
       oops(r, "GitHub", "https://www.githubstatus.com/")
-      r = SESSION.get(endpoint, params=params)
+      r = requests.get(endpoint, params=params, **REQUESTS_SETTINGS)
    return r
 
 def check_repo(owner, repo, verbose=config.VERBOSE):
@@ -165,10 +169,10 @@ def post_webhook(params, url):
    See here for info on Discord Webhooks:
    https://birdie0.github.io/discord-webhooks-guide/discord_webhook.html
    """
-   r = SESSION.post(url, json=params)
+   r = requests.post(url, json=params, **REQUESTS_SETTINGS)
    while r.status_code != 204:
       oops(r, "Discord", "https://status.discordapp.com/")
-      r = SESSION.post(url, json=params)
+      r = requests.post(url, json=params, **REQUESTS_SETTINGS)
    return r
 
 async def subscribe(owner, repo, webhook_url):

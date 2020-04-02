@@ -28,4 +28,4 @@ Add your username and [a personal access token](https://help.github.com/en/githu
 
 ## Notes
 
-I guarantee there are still bugs I need to sort out. (Sorrynotsorry) Please be patient...
+There are likely still bugs I need to sort out. (Sorrynotsorry)
