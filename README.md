@@ -4,7 +4,9 @@ GitHub can work together with Discord to help keep you up-to-date on your repos 
 
 ## How it looks
 
-![(image of what a usual commit looks like)](https://i.imgur.com/dmd5Eyo.png)
+<p align="center">
+   <img alt="(image of what a usual commit looks like)" src="https://i.imgur.com/clG67cm.png">
+</p>
 
 Note, this format is a different design than the usual GitHub Webhooks you can set up for the repositories you own. The design was not meant to be a perfect replicate but rather a decent one in its own right.
 
@@ -26,4 +28,4 @@ Add your username and [a personal access token](https://help.github.com/en/githu
 
 ## Notes
 
-I guarantee there are still bugs I need to sort out. (Sorrynotsorry)
+I guarantee there are still bugs I need to sort out. (Sorrynotsorry) Please be patient...
