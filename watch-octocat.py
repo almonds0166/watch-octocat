@@ -9,13 +9,24 @@ import requests
 from datetime import datetime, timedelta
 import time
 
-# Endpoint
-GET_COMMITS = "https://api.github.com/repos/{owner}/{repo}/commits"       # get list of commits
-GET_COMMIT  = "https://api.github.com/repos/{owner}/{repo}/commits/{sha}" # get specific commit, including the list of file changes
+# Endpoints
+
+# get list of commits:
+GET_COMMITS = "https://api.github.com/repos/{owner}/{repo}/commits"
+
+# get specific commit, including the list of file changes:
+GET_COMMIT  = "https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
 
 # requests settings
+
 USER_AGENT = "WatchOctocatBot/0.0" # instead of requests's User-Agent
-HEADERS = {"User-Agent": USER_AGENT, "Time-Zone": "Etc/UTC"}
+TIME_ZONE  = "Etc/UTC"
+
+HEADERS    = {
+   "User-Agent": USER_AGENT,
+   "Time-Zone": TIME_ZONE
+}
+
 AUTH = None
 if config.USERNAME and config.PERSONAL_ACCESS_TOKEN:
    AUTH = (config.USERNAME, config.PERSONAL_ACCESS_TOKEN)
@@ -37,11 +48,47 @@ def now(offset=0):
    t = datetime.utcnow().replace(microsecond=0) - timedelta(minutes=offset)
    return t.isoformat() + "Z"
 
+def oops(response, api_name, status_url):
+   """
+   Routine to handle when the GitHub or Discord API is down.
+   """
+   status_name = requests.status_codes._codes[response.status_code][0]
+   try:
+      json = response.json()
+   except ValueError:
+      json = "n/a"
+   msg = (
+      f"___\n"
+      f"Oops! Something went wrong with the {api_name} API.\n"
+      f"Response code: {response.status_code} ({status_name})\n"
+      f"JSON received: {json}\n"
+      f"Check GitHub status here: {status_url}\n"
+      f"Blocking for {config.API_DOWN_WAIT} seconds before trying again...\n"
+   )
+   print(msg)
+   time.sleep(config.API_DOWN_WAIT)
+
 def get_request(endpoint, params=None):
+   """
+   GETs data from the GitHub API, handles errors.
+   """
    r = requests.get(endpoint, params=params, **REQUESTS_SETTINGS) # can be simplified in Python 3.8 using the walrus operator
    while r.status_code != 200:
       oops(r, "GitHub", "https://www.githubstatus.com/")
       r = requests.get(endpoint, params=params, **REQUESTS_SETTINGS)
+   return r
+
+def post_webhook(params, url):
+   """
+   POSTs JSON data to a Discord Webhook URL, handles errors.
+
+   See here for info on Discord Webhooks:
+   https://birdie0.github.io/discord-webhooks-guide/discord_webhook.html
+   """
+   r = requests.post(url, json=params, **REQUESTS_SETTINGS)
+   while r.status_code != 204:
+      oops(r, "Discord", "https://status.discordapp.com/")
+      r = requests.post(url, json=params, **REQUESTS_SETTINGS)
    return r
 
 def check_repo(owner, repo, verbose=config.VERBOSE):
@@ -144,36 +191,6 @@ def repo_to_params(repository, commit, verbose=config.VERBOSE):
       print(params) # consider using pprint
 
    return params
-
-def oops(response, api_name, status_url):
-   status_name = requests.status_codes._codes[response.status_code][0]
-   try:
-      json = response.json()
-   except ValueError:
-      json = "n/a"
-   msg = (
-      f"___\n"
-      f"Oops! Something went wrong with the {api_name} API.\n"
-      f"Response code: {response.status_code} ({status_name})\n"
-      f"JSON received: {json}\n"
-      f"Check GitHub status here: {status_url}\n"
-      f"Blocking for {config.API_DOWN_WAIT} seconds before trying again...\n"
-   )
-   print(msg)
-   time.sleep(config.API_DOWN_WAIT)
-
-def post_webhook(params, url):
-   """
-   POSTs JSON data to a Discord Webhook URL.
-
-   See here for info on Discord Webhooks:
-   https://birdie0.github.io/discord-webhooks-guide/discord_webhook.html
-   """
-   r = requests.post(url, json=params, **REQUESTS_SETTINGS)
-   while r.status_code != 204:
-      oops(r, "Discord", "https://status.discordapp.com/")
-      r = requests.post(url, json=params, **REQUESTS_SETTINGS)
-   return r
 
 async def subscribe(owner, repo, webhook_url):
    """
